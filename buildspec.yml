@@ -4,6 +4,7 @@ phases:
   pre_build:
     commands:
       - pip install -r requirements.txt
+      - echo THIS IS A TEST. 
 artifacts:
   files:
     - '**/*'
