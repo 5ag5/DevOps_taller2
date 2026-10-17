@@ -3,12 +3,14 @@ version: 0.2
 phases:
   pre_build:
     commands:
-      - pip install -r requirements.txt
+      - python -m pip install -r requirements.txt
       - echo THIS IS A TEST.
-      - pip install pytest 
+      - python -m pip install pytest
   build:
     commands:
-      - pytest -q
+      - python -m pytest -q
 artifacts:
   files:
     - '**/*'
+
+
