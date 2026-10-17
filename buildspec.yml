@@ -4,7 +4,11 @@ phases:
   pre_build:
     commands:
       - pip install -r requirements.txt
-      - echo THIS IS A TEST. 
+      - echo THIS IS A TEST.
+      - pip install pytest 
+  build:
+    commands:
+      - pytest -q
 artifacts:
   files:
     - '**/*'
