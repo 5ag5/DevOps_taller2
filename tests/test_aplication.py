@@ -1,62 +1,56 @@
 import pytest
 
-from app import create_app
-from app.extensions import db
+from funtions import load_file
+
+
+HEROES = {
+    "0": {
+        "name": "A-Bomb",
+        "gender": "Male",
+        "eye_color": "yellow",
+        "race": "Human",
+        "hair_color": "No Hair",
+        "height": "203",
+        "publisher": "Marvel Comics",
+        "skin_color": "-",
+        "alignment": "good",
+        "weight": "441",
+    }
+}
 
 
 @pytest.fixture
-def client():
-    app = create_app(
-        {
-            "TESTING": True,
-            "SQLALCHEMY_DATABASE_URI": "sqlite://",
-            "STATIC_TOKEN": "test-token",
-        }
+def client(monkeypatch):
+    import application as app_module
+
+    monkeypatch.setattr(app_module, "data", HEROES)
+    app_module.application.config.update(TESTING=True)
+    return app_module.application.test_client()
+
+
+def test_load_file_parses_hero_csv(tmp_path):
+    csv_file = tmp_path / "heroes.csv"
+    csv_file.write_text(
+        "id;Name;Gender;Eye color;Race;Hair color;Height;Publisher;Skin color;Alignment;Weight\n"
+        "42;Nova;Male;blue;Human;Black;190;Marvel Comics;light;good;85\n",
+        encoding="utf-8",
     )
 
-    with app.test_client() as test_client:
-        yield test_client
+    heroes = load_file(str(csv_file))
 
-    with app.app_context():
-        db.drop_all()
-
-
-def auth_headers():
-    return {"Authorization": "Bearer test-token"}
+    assert heroes["42"]["name"] == "Nova"
+    assert heroes["42"]["weight"] == "85"
 
 
-def test_health_endpoint_returns_ok(client):
-    response = client.get("/health")
+def test_home_route_returns_all_heroes(client):
+    response = client.get("/")
 
     assert response.status_code == 200
-    assert response.get_json() == {"status": "ok"}
+    assert response.get_json() == HEROES
 
 
-def test_blacklist_endpoint_requires_authorization(client):
-    response = client.get("/blacklists/user@example.com")
+def test_hero_route_returns_requested_hero(client):
+    response = client.get("/0")
 
-    assert response.status_code == 401
-    assert response.get_json()["msg"] == "Token de autorización no proporcionado"
-
-def test_can_add_and_check_blacklisted_email(client):
-    payload = {
-        "email": "user@example.com",
-        "app_uuid": "123e4567-e89b-12d3-a456-426614174000",
-        "blocked_reason": "Prueba unitaria",
-    }
-
-    create_response = client.post(
-        "/blacklists", json=payload, headers=auth_headers()
-    )
-    check_response = client.get(
-        "/blacklists/user@example.com", headers=auth_headers()
-    )
-
-    assert create_response.status_code == 201
-    assert create_response.get_json()["blacklist"]["email"] == "user@example.com"
-    assert check_response.status_code == 200
-    assert check_response.get_json() == {
-        "email": "user@example.com",
-        "is_blacklisted": True,
-        "blocked_reason": "Prueba unitaria",
-    }
+    assert response.status_code == 200
+    assert response.get_json() == HEROES["0"]
